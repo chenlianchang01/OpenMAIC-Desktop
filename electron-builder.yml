@@ -1,0 +1,66 @@
+# electron-builder 配置
+# 使用 Next.js standalone 输出模式，最小化打包体积
+
+appId: org.openmaic.desktop
+productName: OpenMAIC
+copyright: Copyright © 2026 OpenMAIC
+
+directories:
+  output: release/${version}
+  buildResources: build
+
+# electron 主进程 + 运行时依赖（ffmpeg-static 等）
+files:
+  - "dist-electron/**/*"
+  - "package.json"
+  - "node_modules/ffmpeg-static/**/*"
+  - "node_modules/@derhuerst/**/*"
+
+# Next.js standalone + render-service + Chromium + FFmpeg
+extraResources:
+  # Next.js standalone 服务器（包含精简后的 node_modules）
+  - from: ".next/standalone"
+    to: "app/.next/standalone"
+  # render-service 编译产物
+  - from: "render-service/dist"
+    to: "app/render-service/dist"
+  # render-service 的 package.json（ESM 模块解析需要）
+  - from: "render-service/package.json"
+    to: "app/render-service/package.json"
+  # render-service 的运行时依赖
+  - from: "render-service/node_modules"
+    to: "app/render-service/node_modules"
+  # Chromium headless shell
+  - from: "chromium"
+    to: "chromium"
+  # FFmpeg 二进制
+  - from: "ffmpeg"
+    to: "ffmpeg"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: OpenMAIC
+
+portable:
+  artifactName: OpenMAIC-${version}-portable.exe
+
+# 不重新安装依赖
+npmArgs:
+  - "--production"
+  - "--ignore-scripts"
+
+# 压缩级别
+compression: maximum

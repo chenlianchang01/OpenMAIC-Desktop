@@ -1,0 +1,168 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10"
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install root dependencies
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+
+      - name: Install render-service dependencies
+        shell: bash
+        run: |
+          cd render-service
+          npm install
+          cd ..
+
+      - name: Install Electron and packaging deps
+        shell: bash
+        run: |
+          pnpm add -D electron electron-builder
+          pnpm add ffmpeg-static puppeteer
+
+      - name: Build Next.js (standalone, with video export enabled)
+        shell: bash
+        env:
+          NEXT_PUBLIC_ENABLE_VIDEO_EXPORT: "1"
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          pnpm build
+
+      - name: Assemble Next.js standalone directory
+        shell: bash
+        run: |
+          # 复制 static 资源到 standalone
+          mkdir -p .next/standalone/.next/static
+          cp -r .next/static/* .next/standalone/.next/static/
+
+          # 复制 public 目录到 standalone
+          mkdir -p .next/standalone/public
+          cp -r public/* .next/standalone/public/ 2>/dev/null || true
+
+          echo "=== standalone directory ==="
+          ls -la .next/standalone/
+          echo "=== standalone size ==="
+          du -sh .next/standalone/
+
+      - name: Build render-service
+        shell: bash
+        run: |
+          cd render-service
+          npx tsc --outDir dist
+          echo "=== render-service dist ==="
+          ls -la dist/
+          cd ..
+
+      - name: Build Electron main process
+        shell: bash
+        run: |
+          npx tsc -p electron/tsconfig.json
+          echo "=== electron dist ==="
+          ls -la dist-electron/
+
+      - name: Download Chromium headless shell
+        shell: bash
+        env:
+          PUPPETEER_CACHE_DIR: ${{ github.workspace }}/chromium-cache
+        run: |
+          npx puppeteer browsers install chrome-headless-shell
+
+      - name: Locate and stage Chromium
+        id: chromium
+        shell: bash
+        run: |
+          CHROMIUM_EXE=$(find "${{ github.workspace }}/chromium-cache" -name "chrome-headless-shell.exe" 2>/dev/null | head -1)
+          if [ -z "$CHROMIUM_EXE" ]; then
+            echo "chrome-headless-shell.exe not found!"
+            find "${{ github.workspace }}/chromium-cache" -type f 2>/dev/null | head -30
+            exit 1
+          fi
+          CHROMIUM_DIR=$(dirname "$CHROMIUM_EXE")
+          echo "Chromium found at: $CHROMIUM_EXE"
+          echo "Chromium dir: $CHROMIUM_DIR"
+
+          # 复制整个 Chromium 目录到打包目录
+          mkdir -p chromium
+          cp -r "$CHROMIUM_DIR"/* chromium/
+          echo "=== chromium dir ==="
+          ls -la chromium/
+          echo "chromium_path=chromium/chrome-headless-shell.exe" >> $GITHUB_OUTPUT
+
+      - name: Stage FFmpeg binary
+        shell: bash
+        run: |
+          FFMPEG_PATH=$(node -e "console.log(require('ffmpeg-static'))")
+          echo "FFmpeg found at: $FFMPEG_PATH"
+          mkdir -p ffmpeg
+          cp "$FFMPEG_PATH" ffmpeg/ffmpeg.exe
+          ls -la ffmpeg/
+
+      - name: Build Electron app (electron-builder)
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          USE_HARD_LINKS: "false"
+          # 确保 electron-builder 能找到 ffmpeg-static
+          npm_config_platform: win32
+          npm_config_arch: x64
+        run: |
+          npx electron-builder --win --x64 --config electron-builder.yml
+
+      - name: List build artifacts
+        shell: bash
+        run: |
+          echo "=== Release directory ==="
+          find release -type f 2>/dev/null || echo "No release files found"
+          echo ""
+          echo "=== File sizes ==="
+          du -sh release/*/*.exe 2>/dev/null || du -sh release/*/*/*.exe 2>/dev/null || true
+
+      - name: Upload EXE artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenMAIC-Windows-EXE
+          path: |
+            release/**/*.exe
+          retention-days: 30
