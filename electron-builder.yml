@@ -18,7 +18,6 @@ files:
 nodeGypRebuild: false
 npmRebuild: false
 buildDependenciesFromSource: false
-asar: false
 
 # Next.js standalone + render-service + Chromium + FFmpeg
 # 注意：使用 openmaic/ 目录而不是 app/，避免与 app.asar 冲突
