@@ -141,11 +141,10 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           USE_HARD_LINKS: "false"
-          # 确保 electron-builder 能找到 ffmpeg-static
-          npm_config_platform: win32
-          npm_config_arch: x64
+          # 禁止 CI 自动发布
+          GH_TOKEN: ""
         run: |
-          npx electron-builder --win --x64 --config electron-builder.yml
+          npx electron-builder --win --x64 --config electron-builder.yml --publish never
 
       - name: List build artifacts
         shell: bash

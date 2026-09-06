@@ -9,12 +9,15 @@ directories:
   output: release/${version}
   buildResources: build
 
-# electron 主进程 + 运行时依赖（ffmpeg-static 等）
+# 只打包 electron 主进程和最小依赖
 files:
   - "dist-electron/**/*"
   - "package.json"
-  - "node_modules/ffmpeg-static/**/*"
-  - "node_modules/@derhuerst/**/*"
+
+# 禁用不必要的构建步骤
+nodeGypRebuild: false
+npmRebuild: false
+buildDependenciesFromSource: false
 
 # Next.js standalone + render-service + Chromium + FFmpeg
 extraResources:
