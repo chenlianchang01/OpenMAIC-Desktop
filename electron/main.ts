@@ -24,7 +24,7 @@ const RESOURCES_DIR = app.isPackaged
 
 /** 项目根目录（包含 .next、render-service 等） */
 const APP_ROOT = app.isPackaged
-  ? path.join(process.resourcesPath, 'app')
+  ? path.join(process.resourcesPath, 'openmaic')
   : path.join(__dirname, '..');
 
 // ---------------------------------------------------------------------------
@@ -129,6 +129,8 @@ function spawnNext(): ChildProcess {
     cwd: path.join(APP_ROOT, '.next', 'standalone'),
     env: {
       ...process.env,
+      // 关键：让 Electron 以 Node.js 模式运行 JS 文件，而不是启动 Electron 应用
+      ELECTRON_RUN_AS_NODE: '1',
       PORT: '3000',
       HOSTNAME: '127.0.0.1',
       NODE_ENV: 'production',
@@ -149,7 +151,11 @@ function spawnRenderService(): ChildProcess {
 
   const child = spawn(process.execPath, [entry], {
     cwd: path.join(APP_ROOT, 'render-service'),
-    env: process.env,
+    env: {
+      ...process.env,
+      // 关键：让 Electron 以 Node.js 模式运行 JS 文件
+      ELECTRON_RUN_AS_NODE: '1',
+    },
     stdio: 'inherit',
   });
 
