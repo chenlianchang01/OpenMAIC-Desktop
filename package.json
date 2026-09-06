@@ -215,7 +215,6 @@
       "sharp",
       "unrs-resolver",
       "puppeteer",
-      "ffmpeg-static",
       "electron"
     ]
   },
