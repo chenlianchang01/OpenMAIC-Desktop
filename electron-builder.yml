@@ -18,21 +18,23 @@ files:
 nodeGypRebuild: false
 npmRebuild: false
 buildDependenciesFromSource: false
+asar: false
 
 # Next.js standalone + render-service + Chromium + FFmpeg
+# 注意：使用 openmaic/ 目录而不是 app/，避免与 app.asar 冲突
 extraResources:
   # Next.js standalone 服务器（包含精简后的 node_modules）
   - from: ".next/standalone"
-    to: "app/.next/standalone"
+    to: "openmaic/.next/standalone"
   # render-service 编译产物
   - from: "render-service/dist"
-    to: "app/render-service/dist"
+    to: "openmaic/render-service/dist"
   # render-service 的 package.json（ESM 模块解析需要）
   - from: "render-service/package.json"
-    to: "app/render-service/package.json"
+    to: "openmaic/render-service/package.json"
   # render-service 的运行时依赖
   - from: "render-service/node_modules"
-    to: "app/render-service/node_modules"
+    to: "openmaic/render-service/node_modules"
   # Chromium headless shell
   - from: "chromium"
     to: "chromium"
