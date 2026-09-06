@@ -4,6 +4,8 @@
   "exclude": [
     "node_modules",
     "dist",
+    "dist-electron",
+    "electron",
     "packages/*/src",
     "packages/docs",
     "openclaw",

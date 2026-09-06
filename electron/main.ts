@@ -102,9 +102,11 @@ function setupEnv(): void {
     'render-tmp',
   );
 
-  // Next.js 配置
-  process.env.PORT = process.env.PORT || '3000';
-  process.env.NODE_ENV = 'production';
+  // Next.js 配置（通过子进程 env 传递，不直接修改 process.env）
+  if (!process.env.PORT) {
+    (process.env as Record<string, string>).PORT = '3000';
+  }
+  (process.env as Record<string, string>).NODE_ENV = 'production';
 
   // 确保用户数据目录存在
   fs.mkdirSync(process.env.PRODUCER_TMP_PROJECT_DIR, { recursive: true });
