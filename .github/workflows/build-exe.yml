@@ -46,7 +46,7 @@ jobs:
       - name: Install root dependencies
         shell: bash
         run: |
-          pnpm install --frozen-lockfile
+          pnpm install --no-frozen-lockfile
 
       - name: Install render-service dependencies
         shell: bash
@@ -54,12 +54,6 @@ jobs:
           cd render-service
           npm install
           cd ..
-
-      - name: Install Electron and packaging deps
-        shell: bash
-        run: |
-          pnpm add -D electron electron-builder
-          pnpm add ffmpeg-static puppeteer
 
       - name: Build Next.js (standalone, with video export enabled)
         shell: bash
