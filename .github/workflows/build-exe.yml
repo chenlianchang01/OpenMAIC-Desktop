@@ -146,6 +146,74 @@ jobs:
         run: |
           npx electron-builder --win --x64 --config electron-builder.yml --publish never
 
+      - name: Verify build output completeness
+        shell: bash
+        run: |
+          echo "=== Verifying Electron runtime files ==="
+          UNPACKED_DIR=$(find release -type d -name "win-unpacked" | head -1)
+          echo "Unpacked dir: $UNPACKED_DIR"
+          
+          if [ -z "$UNPACKED_DIR" ]; then
+            echo "ERROR: win-unpacked directory not found!"
+            find release -type d 2>/dev/null
+            exit 1
+          fi
+          
+          echo ""
+          echo "=== Root directory files ==="
+          ls -la "$UNPACKED_DIR/"
+          
+          echo ""
+          echo "=== Checking critical Electron runtime files ==="
+          MISSING=0
+          for f in icudtl.dat v8_context_snapshot.bin resources.pak ffmpeg.dll libEGL.dll libGLESv2.dll; do
+            if [ -f "$UNPACKED_DIR/$f" ]; then
+              echo "  [OK] $f"
+            else
+              echo "  [MISSING] $f"
+              MISSING=1
+            fi
+          done
+          
+          echo ""
+          echo "=== Checking resources directory ==="
+          ls -la "$UNPACKED_DIR/resources/"
+          
+          echo ""
+          echo "=== Checking app.asar (electron main process) ==="
+          if [ -f "$UNPACKED_DIR/resources/app.asar" ]; then
+            echo "  [OK] app.asar exists ($(du -sh "$UNPACKED_DIR/resources/app.asar" | cut -f1))"
+          else
+            echo "  [MISSING] app.asar"
+            MISSING=1
+          fi
+          
+          echo ""
+          echo "=== Checking openmaic resources (Next.js + render-service) ==="
+          if [ -d "$UNPACKED_DIR/resources/openmaic/.next/standalone" ]; then
+            echo "  [OK] .next/standalone exists"
+            ls "$UNPACKED_DIR/resources/openmaic/.next/standalone/" | head -10
+          else
+            echo "  [MISSING] .next/standalone"
+            MISSING=1
+          fi
+          
+          if [ -d "$UNPACKED_DIR/resources/openmaic/render-service/dist" ]; then
+            echo "  [OK] render-service/dist exists"
+            ls "$UNPACKED_DIR/resources/openmaic/render-service/dist/" | head -10
+          else
+            echo "  [MISSING] render-service/dist"
+            MISSING=1
+          fi
+          
+          echo ""
+          if [ $MISSING -eq 1 ]; then
+            echo "ERROR: Critical files missing! Build verification failed."
+            exit 1
+          else
+            echo "All critical files verified successfully."
+          fi
+
       - name: List build artifacts
         shell: bash
         run: |
